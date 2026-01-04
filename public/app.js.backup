@@ -2,17 +2,11 @@
 // 数据结构和全局变量
 
 class Vector {
-    constructor(id, data, timestamp, level = 0) {
+    constructor(id, data, timestamp) {
         this.id = id;
         this.data = data; // 4维向量
         this.timestamp = timestamp;
-        this.level = level; // 节点所在的最高层级
-        this.neighbors = {}; // 每层的邻居节点 { layer: [neighbors] }
-
-        // 初始化每一层的邻居数组
-        for (let i = 0; i <= level; i++) {
-            this.neighbors[i] = [];
-        }
+        this.neighbors = []; // HNSW 邻居节点
     }
 
     // 计算与另一个向量的欧氏距离
@@ -28,153 +22,43 @@ class Vector {
 class HNSWIndex {
     constructor() {
         this.vectors = [];
-        this.maxConnections = 2; // 每个节点最多连接数 (M) - 更稀疏
-        this.maxConnectionsLayer0 = 4; // 第0层的最大连接数 (M0) - 更稀疏
-        this.levelMultiplier = 1 / Math.log(2); // 层级分配参数 (mL)
-        this.entryPoint = null; // 入口点（最高层的节点）
-        this.maxLevel = 0; // 当前最高层级
-    }
-
-    // 随机分配层级（指数衰减分布）
-    randomLevel() {
-        let level = 0;
-        while (Math.random() < 0.5 && level < 2) { // 最多2层（0,1,2 共3层）
-            level++;
-        }
-        return level;
-    }
-
-    // 获取指定层级的最大连接数
-    getMaxConnections(layer) {
-        return layer === 0 ? this.maxConnectionsLayer0 : this.maxConnections;
+        this.maxConnections = 5; // 每个节点最多连接数
     }
 
     // 插入向量到 HNSW 索引
     insert(vector) {
-        // 第一个节点，直接设为入口点
         if (this.vectors.length === 0) {
-            this.entryPoint = vector;
-            this.maxLevel = vector.level;
             this.vectors.push(vector);
             return;
         }
 
-        // 从顶层开始搜索最近邻
-        let currentNearest = [{ vector: this.entryPoint, distance: vector.distance(this.entryPoint) }];
+        // 找到最近的 k 个邻居
+        const neighbors = this.findKNearest(vector, this.maxConnections);
 
-        // 从最高层向下搜索到新节点的层级+1
-        for (let lc = this.maxLevel; lc > vector.level; lc--) {
-            currentNearest = this.searchLayer(vector, currentNearest, 1, lc);
-        }
+        // 建立双向连接
+        neighbors.forEach(neighbor => {
+            if (neighbor.neighbors.length < this.maxConnections) {
+                neighbor.neighbors.push(vector);
+                vector.neighbors.push(neighbor);
+            } else {
+                // 如果邻居已满，替换最远的连接
+                const distances = neighbor.neighbors.map(n => neighbor.distance(n));
+                const maxDistIdx = distances.indexOf(Math.max(...distances));
+                const newDist = neighbor.distance(vector);
 
-        // 在新节点所在的每一层建立连接
-        for (let lc = vector.level; lc >= 0; lc--) {
-            const candidates = this.searchLayer(vector, currentNearest, this.getMaxConnections(lc), lc);
-            const M = this.getMaxConnections(lc);
-
-            // 选择最好的 M 个邻居
-            const neighbors = this.selectNeighbors(vector, candidates, M);
-
-            // 建立双向连接
-            neighbors.forEach(neighbor => {
-                this.addConnection(vector, neighbor.vector, lc);
-                this.addConnection(neighbor.vector, vector, lc);
-
-                // 如果邻居连接数超过限制，修剪连接
-                const neighborConnections = neighbor.vector.neighbors[lc];
-                if (neighborConnections.length > M) {
-                    this.pruneConnections(neighbor.vector, M, lc);
+                if (newDist < distances[maxDistIdx]) {
+                    const removed = neighbor.neighbors[maxDistIdx];
+                    removed.neighbors = removed.neighbors.filter(n => n.id !== neighbor.id);
+                    neighbor.neighbors[maxDistIdx] = vector;
+                    vector.neighbors.push(neighbor);
                 }
-            });
-
-            currentNearest = candidates;
-        }
+            }
+        });
 
         this.vectors.push(vector);
-
-        // 更新入口点
-        if (vector.level > this.maxLevel) {
-            this.maxLevel = vector.level;
-            this.entryPoint = vector;
-        }
     }
 
-    // 在指定层搜索最近邻
-    searchLayer(query, entryPoints, ef, layer) {
-        const visited = new Set();
-        const candidates = [...entryPoints];
-        const results = [...entryPoints];
-
-        // 初始化访问集合
-        entryPoints.forEach(ep => visited.add(ep.vector.id));
-
-        while (candidates.length > 0) {
-            // 获取候选集中最近的点
-            candidates.sort((a, b) => a.distance - b.distance);
-            const current = candidates.shift();
-
-            // 如果当前点比结果集中最远的点还远，停止搜索
-            results.sort((a, b) => a.distance - b.distance);
-            if (current.distance > results[results.length - 1].distance) {
-                break;
-            }
-
-            // 检查当前点在该层的所有邻居
-            const neighbors = current.vector.neighbors[layer] || [];
-            neighbors.forEach(neighbor => {
-                if (!visited.has(neighbor.id)) {
-                    visited.add(neighbor.id);
-                    const dist = query.distance(neighbor);
-
-                    // 如果找到更近的点，或结果集未满
-                    if (results.length < ef || dist < results[results.length - 1].distance) {
-                        candidates.push({ vector: neighbor, distance: dist });
-                        results.push({ vector: neighbor, distance: dist });
-
-                        // 保持结果集大小
-                        results.sort((a, b) => a.distance - b.distance);
-                        if (results.length > ef) {
-                            results.pop();
-                        }
-                    }
-                }
-            });
-        }
-
-        return results;
-    }
-
-    // 选择最佳邻居（启发式选择）
-    selectNeighbors(query, candidates, M) {
-        candidates.sort((a, b) => a.distance - b.distance);
-        return candidates.slice(0, M);
-    }
-
-    // 添加连接
-    addConnection(from, to, layer) {
-        if (!from.neighbors[layer]) {
-            from.neighbors[layer] = [];
-        }
-        if (!from.neighbors[layer].find(n => n.id === to.id)) {
-            from.neighbors[layer].push(to);
-        }
-    }
-
-    // 修剪连接（保留最近的 M 个）
-    pruneConnections(vector, M, layer) {
-        const neighbors = vector.neighbors[layer];
-        if (neighbors.length <= M) return;
-
-        const distances = neighbors.map(n => ({
-            neighbor: n,
-            distance: vector.distance(n)
-        }));
-
-        distances.sort((a, b) => a.distance - b.distance);
-        vector.neighbors[layer] = distances.slice(0, M).map(d => d.neighbor);
-    }
-
-    // 查找 k 个最近邻（简化版，用于兼容）
+    // 查找 k 个最近邻
     findKNearest(query, k) {
         if (this.vectors.length === 0) return [];
 
@@ -187,25 +71,17 @@ class HNSWIndex {
         return distances.slice(0, Math.min(k, distances.length)).map(d => d.vector);
     }
 
-    // 搜索最近的向量，返回带距离的结果（使用分层搜索）
-    search(query, k = 5, ef = 50) {
+    // 搜索最近的向量，返回带距离的结果
+    search(query, k = 5) {
         if (this.vectors.length === 0) return [];
-        if (!this.entryPoint) return [];
 
-        // 从入口点开始
-        let currentNearest = [{ vector: this.entryPoint, distance: query.distance(this.entryPoint) }];
+        const distances = this.vectors.map(v => ({
+            vector: v,
+            distance: query.distance(v)
+        }));
 
-        // 从最高层向下搜索到第1层
-        for (let lc = this.maxLevel; lc > 0; lc--) {
-            currentNearest = this.searchLayer(query, currentNearest, 1, lc);
-        }
-
-        // 在第0层进行详细搜索
-        const results = this.searchLayer(query, currentNearest, Math.max(ef, k), 0);
-
-        // 返回前 k 个结果
-        results.sort((a, b) => a.distance - b.distance);
-        return results.slice(0, k);
+        distances.sort((a, b) => a.distance - b.distance);
+        return distances.slice(0, Math.min(k, distances.length));
     }
 
     // 移除指定时间窗口及之前的向量（基于时间窗口）
@@ -220,27 +96,11 @@ class HNSWIndex {
             return vectorWindow > windowThreshold;
         });
 
-        // 清理邻居引用（所有层）
+        // 清理邻居引用
         const remainingIds = new Set(this.vectors.map(v => v.id));
         this.vectors.forEach(v => {
-            for (let layer in v.neighbors) {
-                v.neighbors[layer] = v.neighbors[layer].filter(n => remainingIds.has(n.id));
-            }
+            v.neighbors = v.neighbors.filter(n => remainingIds.has(n.id));
         });
-
-        // 如果入口点被移除，重新选择入口点
-        if (this.entryPoint && !remainingIds.has(this.entryPoint.id)) {
-            this.entryPoint = null;
-            this.maxLevel = 0;
-
-            // 找到层级最高的节点作为新入口点
-            this.vectors.forEach(v => {
-                if (v.level > this.maxLevel) {
-                    this.maxLevel = v.level;
-                    this.entryPoint = v;
-                }
-            });
-        }
 
         return removed;
     }
@@ -353,9 +213,6 @@ function updateStats() {
 
     // 更新颜色图例
     updateWindowLegend();
-
-    // 更新层级统计
-    updateLayerStats();
 }
 
 // 按时间窗口统计 HNSW 中的向量
@@ -386,42 +243,6 @@ function updateMinuteStats() {
     });
 
     statsContainer.innerHTML = html;
-}
-
-// 更新层级统计
-function updateLayerStats() {
-    const statsContainer = document.getElementById('hnswMinuteStats');
-    if (!statsContainer) return;
-
-    // 统计每层的节点数
-    const layerMap = new Map();
-    let maxLevel = 0;
-
-    app.hnswIndex.vectors.forEach(v => {
-        maxLevel = Math.max(maxLevel, v.level);
-        for (let i = 0; i <= v.level; i++) {
-            layerMap.set(i, (layerMap.get(i) || 0) + 1);
-        }
-    });
-
-    if (app.hnswIndex.vectors.length === 0) {
-        return;
-    }
-
-    // 添加层级统计到现有内容后面
-    let layerHtml = '<div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eaeded;">';
-    layerHtml += '<h4 style="font-size: 13px; margin-bottom: 8px; color: #545b64;">HNSW 层级分布:</h4>';
-
-    for (let i = maxLevel; i >= 0; i--) {
-        const count = layerMap.get(i) || 0;
-        layerHtml += `<div style="padding: 6px 8px; margin-bottom: 4px; background-color: white; border-radius: 3px; border-left: 3px solid #ff6b6b;">
-            <span style="color: #ff6b6b; font-weight: 700;">层 ${i}:</span>
-            <span style="color: #16191f; font-weight: 700;">${count}</span> 个节点
-        </div>`;
-    }
-    layerHtml += '</div>';
-
-    statsContainer.innerHTML += layerHtml;
 }
 
 // 更新时间窗口颜色图例
@@ -565,7 +386,6 @@ function updateHNSWGraph() {
             id: v.id,
             vector: v,
             window: window,
-            level: v.level, // 添加层级信息
             color: getColorForWindow(window, allWindows),
             x: v.x,
             y: v.y
@@ -574,9 +394,7 @@ function updateHNSWGraph() {
 
     const links = [];
     app.hnswIndex.vectors.forEach(v => {
-        // 只显示第0层的连接（最密集的层）
-        const neighbors = v.neighbors[0] || [];
-        neighbors.forEach(neighbor => {
+        v.neighbors.forEach(neighbor => {
             if (v.id < neighbor.id) {
                 links.push({
                     source: v.id,
@@ -613,38 +431,17 @@ function updateHNSWGraph() {
         .on('click', onNodeClick);
 
     nodeEnter.append('circle')
-        .attr('r', d => 15 + d.level * 2) // 根据层级调整节点大小
-        .attr('fill', d => d.color)
-        .attr('stroke', d => d.level > 0 ? '#ff6b6b' : 'none') // 高层节点添加红色边框
-        .attr('stroke-width', d => d.level > 0 ? 2 : 0);
+        .attr('r', 15)
+        .attr('fill', d => d.color);
 
-    // 更新现有节点的颜色和大小
+    // 更新现有节点的颜色
     node.select('circle')
-        .attr('r', d => 15 + d.level * 2)
-        .attr('fill', d => d.color)
-        .attr('stroke', d => d.level > 0 ? '#ff6b6b' : 'none')
-        .attr('stroke-width', d => d.level > 0 ? 2 : 0);
+        .attr('fill', d => d.color);
 
     nodeEnter.append('text')
         .attr('dy', 4)
         .attr('text-anchor', 'middle')
-        .attr('font-size', '11px')
-        .attr('fill', 'white')
-        .attr('font-weight', 'bold')
         .text(d => d.id);
-
-    // 添加层级标签
-    nodeEnter.append('text')
-        .attr('dy', -18)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '9px')
-        .attr('fill', '#ff6b6b')
-        .attr('font-weight', 'bold')
-        .text(d => d.level > 0 ? `L${d.level}` : '');
-
-    // 更新层级标签
-    node.select('text:nth-of-type(2)')
-        .text(d => d.level > 0 ? `L${d.level}` : '');
 
     // 更新模拟
     app.simulation.nodes(nodes);
@@ -715,26 +512,13 @@ function showVectorDetail(vector) {
     const age = Math.floor((Date.now() - vector.timestamp) / 1000);
     const ageText = age < 60 ? `${age}秒` : `${Math.floor(age / 60)}分钟`;
 
-    // 计算所有层的邻居总数
-    let totalNeighbors = 0;
-    let neighborsByLayer = '';
-    for (let layer in vector.neighbors) {
-        const count = vector.neighbors[layer].length;
-        totalNeighbors += count;
-        if (count > 0) {
-            const ids = vector.neighbors[layer].map(n => n.id).join(', ');
-            neighborsByLayer += `<div style="margin-left: 10px;"><strong>层 ${layer}:</strong> ${ids}</div>`;
-        }
-    }
-
     vectorInfo.innerHTML = `
         <div><strong>ID:</strong> ${vector.id}</div>
-        <div><strong>层级:</strong> ${vector.level}</div>
         <div><strong>向量:</strong> [${vector.data.map(v => v.toFixed(3)).join(', ')}]</div>
         <div><strong>时间戳:</strong> ${new Date(vector.timestamp).toLocaleTimeString()}</div>
         <div><strong>年龄:</strong> ${ageText}</div>
-        <div><strong>邻居总数:</strong> ${totalNeighbors}</div>
-        ${neighborsByLayer || '<div style="margin-left: 10px;">无邻居</div>'}
+        <div><strong>邻居数:</strong> ${vector.neighbors.length}</div>
+        <div><strong>邻居ID:</strong> ${vector.neighbors.map(n => n.id).join(', ') || '无'}</div>
     `;
 
     detailPanel.classList.remove('hidden');
@@ -775,8 +559,7 @@ function updateTOSBucket() {
 // 向量插入功能
 function insertVector() {
     const vectorData = generateRandomVector();
-    const level = app.hnswIndex.randomLevel(); // 随机分配层级
-    const vector = new Vector(app.vectorIdCounter++, vectorData, Date.now(), level);
+    const vector = new Vector(app.vectorIdCounter++, vectorData, Date.now());
 
     app.hnswIndex.insert(vector);
 
@@ -784,7 +567,7 @@ function insertVector() {
     updateStats();
 
     // 不显示通知，避免频繁打扰
-    console.log(`向量 ${vector.id} 已插入 HNSW 索引 (层级: ${level})`);
+    console.log(`向量 ${vector.id} 已插入 HNSW 索引`);
 }
 
 // 完全自动的随机间隔插入
@@ -855,27 +638,11 @@ function flushToTOS() {
             return vectorWindow >= retainThresholdWindow;
         });
 
-        // 清理邻居引用（所有层）
+        // 清理邻居引用
         const remainingIds = new Set(app.hnswIndex.vectors.map(v => v.id));
         app.hnswIndex.vectors.forEach(v => {
-            for (let layer in v.neighbors) {
-                v.neighbors[layer] = v.neighbors[layer].filter(n => remainingIds.has(n.id));
-            }
+            v.neighbors = v.neighbors.filter(n => remainingIds.has(n.id));
         });
-
-        // 如果入口点被移除，重新选择入口点
-        if (app.hnswIndex.entryPoint && !remainingIds.has(app.hnswIndex.entryPoint.id)) {
-            app.hnswIndex.entryPoint = null;
-            app.hnswIndex.maxLevel = 0;
-
-            // 找到层级最高的节点作为新入口点
-            app.hnswIndex.vectors.forEach(v => {
-                if (v.level > app.hnswIndex.maxLevel) {
-                    app.hnswIndex.maxLevel = v.level;
-                    app.hnswIndex.entryPoint = v;
-                }
-            });
-        }
 
         // 按时间窗口分组
         const windowGroups = new Map();
