@@ -1046,7 +1046,15 @@ function executeQuery() {
     if (hnswWindows.has(targetWindow)) {
         queryPath = 'HNSW 索引 (内存层)';
         console.log('→ 查询路径: HNSW');
-        results = app.hnswIndex.search(queryVector, topK);
+
+        // 先搜索所有结果
+        const allResults = app.hnswIndex.search(queryVector, topK * 10); // 搜索更多结果以便过滤
+
+        // 过滤出目标时间窗口的结果
+        results = allResults
+            .filter(r => getTimeWindow(r.vector.timestamp) === targetWindow)
+            .slice(0, topK);
+
         console.log('✓ HNSW 查询结果数量:', results.length);
     } else {
         queryPath = 'TOS Vector Bucket (持久化层)';
