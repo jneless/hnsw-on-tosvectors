@@ -1,0 +1,15 @@
+{
+  "name": "hnsw-on-tosvectors",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "HNSW & TOS Vectors 分层向量存储演示",
+  "scripts": {
+    "build": "echo 'Static site, no build needed'"
+  },
+  "keywords": ["hnsw", "vector", "storage"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
+}
