@@ -34,4 +34,3 @@ vercel dev --yes
 - 项目使用 ES Modules 配置（`"type": "module"`）以确保与 Vercel 的兼容性
 - 所有静态文件都放在 `public/` 目录下
 - `app.js` 是浏览器端代码，通过 `<script>` 标签加载，无需转换为 Node.js 模块
-
