@@ -1,0 +1,444 @@
+/* AWS 控制台风格样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Amazon Ember", "Helvetica Neue", Roboto, Arial, sans-serif;
+    background-color: #f2f3f3;
+    color: #16191f;
+}
+
+/* 顶部导航栏 */
+.aws-header {
+    background-color: #232f3e;
+    color: white;
+    padding: 0 20px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.service-name {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.separator {
+    color: #687078;
+}
+
+.page-title {
+    font-size: 14px;
+    color: #aab7b8;
+}
+
+.region {
+    font-size: 13px;
+    color: #aab7b8;
+}
+
+/* 主容器布局 */
+.main-container {
+    display: flex;
+    height: calc(100vh - 48px);
+}
+
+/* 左侧控制面板 */
+.control-panel {
+    width: 320px;
+    background-color: white;
+    border-right: 1px solid #d5dbdb;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.panel-section {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #eaeded;
+}
+
+.panel-section:last-child {
+    border-bottom: none;
+}
+
+.panel-section h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #16191f;
+}
+
+/* AWS 按钮样式 */
+.aws-button {
+    width: 100%;
+    padding: 8px 16px;
+    margin-bottom: 8px;
+    border: 1px solid #545b64;
+    border-radius: 2px;
+    background-color: white;
+    color: #16191f;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.aws-button:hover {
+    background-color: #fafafa;
+    border-color: #16191f;
+}
+
+.aws-button.primary {
+    background-color: #ec7211;
+    color: white;
+    border-color: #ec7211;
+}
+
+.aws-button.primary:hover {
+    background-color: #eb5f07;
+    border-color: #eb5f07;
+}
+
+.aws-button.secondary {
+    background-color: #0073bb;
+    color: white;
+    border-color: #0073bb;
+}
+
+.aws-button.secondary:hover {
+    background-color: #005a8e;
+    border-color: #005a8e;
+}
+
+/* 输入框样式 */
+.aws-input {
+    width: 100%;
+    padding: 8px;
+    margin: 8px 0 16px 0;
+    border: 1px solid #aab7b8;
+    border-radius: 2px;
+    font-size: 14px;
+}
+
+.aws-input:focus {
+    outline: none;
+    border-color: #0073bb;
+    box-shadow: 0 0 0 2px rgba(0, 115, 187, 0.2);
+}
+
+label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #16191f;
+    margin-top: 8px;
+}
+
+/* 统计信息 */
+.stats {
+    background-color: #fafafa;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #eaeded;
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #545b64;
+}
+
+.stat-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #16191f;
+}
+
+/* 右侧可视化区域 */
+.visualization-area {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.viz-section {
+    background-color: white;
+    border: 1px solid #d5dbdb;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #eaeded;
+}
+
+.section-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #16191f;
+}
+
+.badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    background-color: #1d8102;
+    color: white;
+}
+
+.badge.secondary {
+    background-color: #0073bb;
+}
+
+/* HNSW 图容器 */
+.graph-container {
+    min-height: 400px;
+    border: 1px solid #eaeded;
+    border-radius: 4px;
+    background-color: #fafafa;
+    position: relative;
+}
+
+/* 向量详情面板 */
+.vector-detail {
+    margin-top: 16px;
+    padding: 16px;
+    background-color: #f9f9f9;
+    border: 1px solid #d5dbdb;
+    border-radius: 4px;
+}
+
+.vector-detail.hidden {
+    display: none;
+}
+
+.vector-detail h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #16191f;
+}
+
+#vectorInfo {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+#vectorInfo div {
+    margin-bottom: 8px;
+}
+
+#vectorInfo strong {
+    color: #545b64;
+    display: inline-block;
+    width: 100px;
+}
+
+/* TOS Bucket 容器 */
+.bucket-container {
+    min-height: 300px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px;
+    background-color: #fafafa;
+    border: 1px solid #eaeded;
+    border-radius: 4px;
+}
+
+.index-card {
+    background-color: white;
+    border: 1px solid #d5dbdb;
+    border-radius: 4px;
+    padding: 16px;
+    width: 200px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.index-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.index-card-header {
+    font-size: 14px;
+    font-weight: 700;
+    color: #16191f;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.index-icon {
+    width: 20px;
+    height: 20px;
+    background-color: #0073bb;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+}
+
+.index-card-body {
+    font-size: 12px;
+    color: #545b64;
+}
+
+.index-card-body div {
+    margin-bottom: 4px;
+}
+
+/* 查询结果 */
+.query-result {
+    padding: 16px;
+    background-color: #fafafa;
+    border: 1px solid #eaeded;
+    border-radius: 4px;
+}
+
+.query-path {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: #0073bb;
+    color: white;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.result-item {
+    background-color: white;
+    border: 1px solid #d5dbdb;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.result-item:last-child {
+    margin-bottom: 0;
+}
+
+/* 通知提示 */
+.notification {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    padding: 12px 20px;
+    background-color: #1d8102;
+    color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+}
+
+.notification.hidden {
+    display: none;
+}
+
+.notification.error {
+    background-color: #d13212;
+}
+
+.notification.info {
+    background-color: #0073bb;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* D3.js 图形样式 */
+.node {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.node circle {
+    stroke: #232f3e;
+    stroke-width: 2px;
+}
+
+.node.selected circle {
+    stroke: #ec7211;
+    stroke-width: 3px;
+}
+
+.node text {
+    font-size: 10px;
+    font-weight: 700;
+    fill: #16191f;
+    pointer-events: none;
+}
+
+.link {
+    stroke: #aab7b8;
+    stroke-width: 1.5px;
+    stroke-opacity: 0.6;
+}
+
+.link.highlighted {
+    stroke: #ec7211;
+    stroke-width: 2.5px;
+    stroke-opacity: 1;
+}
+
+/* 动画效果 */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animating {
+    animation: pulse 1s ease-in-out;
+}
