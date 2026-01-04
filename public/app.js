@@ -715,6 +715,9 @@ function showVectorDetail(vector) {
     const age = Math.floor((Date.now() - vector.timestamp) / 1000);
     const ageText = age < 60 ? `${age}秒` : `${Math.floor(age / 60)}分钟`;
 
+    // 计算第0层的邻居数（与可视化一致）
+    const layer0Neighbors = vector.neighbors[0] ? vector.neighbors[0].length : 0;
+
     // 计算所有层的邻居总数
     let totalNeighbors = 0;
     let neighborsByLayer = '';
@@ -723,7 +726,8 @@ function showVectorDetail(vector) {
         totalNeighbors += count;
         if (count > 0) {
             const ids = vector.neighbors[layer].map(n => n.id).join(', ');
-            neighborsByLayer += `<div style="margin-left: 10px;"><strong>层 ${layer}:</strong> ${ids}</div>`;
+            const layerLabel = layer === '0' ? `层 ${layer} (可视化层)` : `层 ${layer}`;
+            neighborsByLayer += `<div style="margin-left: 10px;"><strong>${layerLabel}:</strong> ${ids}</div>`;
         }
     }
 
@@ -733,7 +737,8 @@ function showVectorDetail(vector) {
         <div><strong>向量:</strong> [${vector.data.map(v => v.toFixed(3)).join(', ')}]</div>
         <div><strong>时间戳:</strong> ${new Date(vector.timestamp).toLocaleTimeString()}</div>
         <div><strong>年龄:</strong> ${ageText}</div>
-        <div><strong>邻居总数:</strong> ${totalNeighbors}</div>
+        <div><strong>第0层邻居:</strong> ${layer0Neighbors} (图中显示的边)</div>
+        <div><strong>所有层邻居:</strong> ${totalNeighbors}</div>
         ${neighborsByLayer || '<div style="margin-left: 10px;">无邻居</div>'}
     `;
 
