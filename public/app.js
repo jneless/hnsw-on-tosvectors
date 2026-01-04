@@ -297,7 +297,8 @@ const app = {
     simulation: null,
     selectedNode: null,
     autoInsertTimer: null,
-    nextInsertTime: null
+    nextInsertTime: null,
+    currentLayerView: 0 // 当前显示的层级（0, 1, 2, 或 'all'）
 };
 
 // 工具函数
@@ -574,28 +575,73 @@ function updateHNSWGraph() {
 
     const links = [];
     app.hnswIndex.vectors.forEach(v => {
-        // 只显示第0层的连接（最密集的层）
-        const neighbors = v.neighbors[0] || [];
-        neighbors.forEach(neighbor => {
-            if (v.id < neighbor.id) {
-                links.push({
-                    source: v.id,
-                    target: neighbor.id
+        // 根据当前选择的层级显示连接
+        if (app.currentLayerView === 'all') {
+            // 显示所有层的连接，用不同颜色区分
+            for (let layer in v.neighbors) {
+                const neighbors = v.neighbors[layer] || [];
+                neighbors.forEach(neighbor => {
+                    if (v.id < neighbor.id) {
+                        links.push({
+                            source: v.id,
+                            target: neighbor.id,
+                            layer: parseInt(layer)
+                        });
+                    }
                 });
             }
-        });
+        } else {
+            // 只显示指定层的连接
+            const layer = app.currentLayerView;
+            const neighbors = v.neighbors[layer] || [];
+            neighbors.forEach(neighbor => {
+                if (v.id < neighbor.id) {
+                    links.push({
+                        source: v.id,
+                        target: neighbor.id,
+                        layer: layer
+                    });
+                }
+            });
+        }
     });
 
     // 更新连线
     const link = app.svg.selectAll('.link')
-        .data(links, d => `${d.source}-${d.target}`);
+        .data(links, d => `${d.source}-${d.target}-${d.layer}`);
 
     link.exit().remove();
 
-    link.enter()
+    const linkEnter = link.enter()
         .append('line')
-        .attr('class', 'link')
-        .merge(link);
+        .attr('class', 'link');
+
+    // 为不同层级设置不同的颜色和样式
+    linkEnter.merge(link)
+        .attr('stroke', d => {
+            if (d.layer === 0) return '#aaa';
+            if (d.layer === 1) return '#ff6b6b';
+            if (d.layer === 2) return '#4dabf7';
+            return '#aaa';
+        })
+        .attr('stroke-width', d => {
+            if (d.layer === 0) return 1;
+            if (d.layer === 1) return 2;
+            if (d.layer === 2) return 2.5;
+            return 1;
+        })
+        .attr('stroke-dasharray', d => {
+            if (d.layer === 0) return 'none';
+            if (d.layer === 1) return '5,3';
+            if (d.layer === 2) return '8,4';
+            return 'none';
+        })
+        .attr('opacity', d => {
+            if (d.layer === 0) return 0.6;
+            if (d.layer === 1) return 0.8;
+            if (d.layer === 2) return 0.9;
+            return 0.6;
+        });
 
     // 更新节点
     const node = app.svg.selectAll('.node')
@@ -1081,6 +1127,15 @@ function displayQueryResults(results, queryPath, queryVector, topK, isRandomGene
 // 事件监听器
 function setupEventListeners() {
     document.getElementById('executeQuery').addEventListener('click', executeQuery);
+
+    // 层级切换监听器
+    document.querySelectorAll('input[name="layerView"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const value = e.target.value;
+            app.currentLayerView = value === 'all' ? 'all' : parseInt(value);
+            updateHNSWGraph();
+        });
+    });
 
     // 点击空白处取消选中
     document.getElementById('hnswGraph').addEventListener('click', (e) => {

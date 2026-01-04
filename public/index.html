@@ -93,6 +93,25 @@
                 <div id="windowLegend" style="margin-bottom: 12px; padding: 12px; background-color: #fafafa; border: 1px solid #eaeded; border-radius: 4px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
                     <span style="font-size: 13px; font-weight: 700; color: #545b64;">时间窗口:</span>
                 </div>
+                <div style="margin-bottom: 12px; padding: 12px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; display: flex; gap: 12px; align-items: center;">
+                    <span style="font-size: 13px; font-weight: 700; color: #856404;">显示层级:</span>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="radio" name="layerView" value="0" checked style="cursor: pointer;">
+                        <span style="font-size: 12px; color: #856404;">层 0</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="radio" name="layerView" value="1" style="cursor: pointer;">
+                        <span style="font-size: 12px; color: #856404;">层 1</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="radio" name="layerView" value="2" style="cursor: pointer;">
+                        <span style="font-size: 12px; color: #856404;">层 2</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="radio" name="layerView" value="all" style="cursor: pointer;">
+                        <span style="font-size: 12px; color: #856404;">所有层</span>
+                    </label>
+                </div>
                 <div id="hnswGraph" class="graph-container"></div>
                 <div id="vectorDetail" class="vector-detail hidden">
                     <h4>向量详情</h4>
